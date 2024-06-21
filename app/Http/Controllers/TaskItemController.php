@@ -14,14 +14,13 @@ class TaskItemController extends Controller
     {
         $query = $request->input('search');
         if ($query) {
-
             $taskItems = TaskItem::whereHas('task', function ($q) use ($query) {
                 $q->where('title', 'LIKE', "%{$query}%");
                 $q->orWhere('pin', 'LIKE', "%{$query}%");
             })
-            ->orWhere('content', 'LIKE', "%{$query}%")
-            ->orWhere('done', 'LIKE', "%{$query}%")
-            ->get();
+                ->orWhere('content', 'LIKE', "%{$query}%")
+                ->orWhere('done', 'LIKE', "%{$query}%")
+                ->get();
         } else {
             $taskItems = TaskItem::with('task')->get();
         }
@@ -35,10 +34,8 @@ class TaskItemController extends Controller
     public function store(TaskItemRequest $request)
     {
         try {
-
             $taskItem = TaskItem::create($request->validated());
             return new TasKItemResource($taskItem);
-
         } catch (Exception $ex) {
             return response()->json($ex->getMessage());
         }
@@ -58,11 +55,9 @@ class TaskItemController extends Controller
     public function update(TaskItemRequest $request, TaskItem $taskItem)
     {
         try {
-            
             $taskItem->update($request->validated());
 
             return new TasKItemResource($taskItem);
-
         } catch (Exception $ex) {
             return response()->json($ex->getMessage());
         }
@@ -74,14 +69,11 @@ class TaskItemController extends Controller
     public function destroy(TaskItem $taskItem)
     {
         try {
-
             $taskItem->delete();
 
             return response()->noContent();
-            
         } catch (Exception $ex) {
             return response()->json($ex->getMessage());
         }
-        
     }
 }

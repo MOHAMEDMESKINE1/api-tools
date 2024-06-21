@@ -36,25 +36,17 @@ class ContactController extends Controller
     public function store(ContactRequest $request)
     {
         try {
-            // Handle file upload if 'profile' file exists in the request
-            if ($request->hasFile('profile')) {
-                $file = $request->file('profile');
-                $fileName = time() . '_' . $file->getClientOriginalName();
-                $filePath = $file->storeAs('uploads/profiles', $fileName, 'public');
-                $profilePath = '/storage/' . $filePath;
-            } else {
-                $profilePath = null; // Set default profile path if no file is uploaded
-            }
+            $validatedData = $request->validated();
+
+            // Handle file upload and get the file path
+            $profilePath = $this->handleProfileUpload($request);
+
+            // Add profile path to validated data
+            $validatedData['profile'] = $profilePath;
+            $validatedData['user_id'] = auth()->id();
 
             // Create a new contact record using Eloquent
-
-            $contact = Contact::create([
-                'name' => $request->input('name'),
-                'email' => $request->input('email'),
-                'phone' => $request->input('phone'),
-                'profile' => $profilePath,
-                'user_id' => auth()->id(),
-            ]);
+            $contact = Contact::create($validatedData);
 
             return new ContactResource($contact);
         } catch (Exception $ex) {
@@ -75,28 +67,18 @@ class ContactController extends Controller
     public function update(ContactRequest $request, Contact $contact)
     {
         try {
-            // Validate the request data
-            $request->validate([
-                'name' => 'required|string|max:255',
-                'email' => 'required|email|max:255',
-                'phone' => 'nullable|string|max:20',
-                'profile' => 'nullable|file|mimes:jpeg,png,jpg,gif|max:2048',
-                'user_id' => 'nullable',
-            ]);
+            $validatedData = $request->validated();
 
-            $data = $request->only(['name', 'email', 'phone', 'user_id']);
+            // Handle file upload and get the new file path
+            $newProfilePath = $this->handleProfileUpload($request, $contact->profile);
 
-            // Handle file upload if 'profile' file exists in the request
-            if ($request->hasFile('profile')) {
-                $file = $request->file('profile');
-                $fileName = time() . '_' . $file->getClientOriginalName();
-                $filePath = $file->storeAs('uploads/profiles', $fileName, 'public');
-                $profilePath = '/storage/' . $filePath;
-                $data['profile'] = $profilePath;
+            // Add new profile path to validated data if a new file was uploaded
+            if ($newProfilePath) {
+                $validatedData['profile'] = $newProfilePath;
             }
 
             // Update the contact record
-            $contact->update($data);
+            $contact->update($validatedData);
 
             return new ContactResource($contact);
         } catch (Exception $ex) {
@@ -123,5 +105,23 @@ class ContactController extends Controller
         } catch (Exception $ex) {
             return response()->json($ex->getMessage());
         }
+    }
+
+    private function handleProfileUpload(Request $request, $oldProfilePath = null)
+    {
+        if ($request->hasFile('profile')) {
+            // Delete the old profile if it exists
+            if ($oldProfilePath) {
+                Storage::disk('public')->delete(str_replace('/storage/', '', $oldProfilePath));
+            }
+
+            $file = $request->file('profile');
+            $fileName = time() . '_' . $file->getClientOriginalName();
+            $filePath = $file->storeAs('uploads/profiles', $fileName, 'public');
+
+            return '/storage/' . $filePath;
+        }
+
+        return null; // Set default profile path if no file is uploaded
     }
 }
